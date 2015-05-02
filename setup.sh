@@ -11,36 +11,36 @@
 
 if [ `id -u` -ne 0 ]
 then
-  echo "Please start this script with root privileges!"
-  echo "Try again with sudo."
+  echo "请以root权限启动该脚本!"
+  echo "再试一次使用sudo."
   exit 0
 fi
 
 lsb_release -c | grep trusty > /dev/null
 if [ "$?" = "1" ]
 then
-  echo "This script was designed to run on Ubuntu 14.04 Trusty!"
-  echo "Do you wish to continue anyway?"
+  echo "这个脚本是要在Ubuntu 14.04上运行!"
+  echo "是否要继续?"
   while true; do
     read -p "" yn
     case $yn in
         [Yy]* ) break;;
         [Nn]* ) exit 0;;
-        * ) echo "Please answer with Yes or No [y|n].";;
+        * ) echo "请用Yes or No回答 [y|n].";;
     esac
   done
   echo ""
 fi
 
-echo "This script will install an IPSec/L2TP VPN Server"
-echo "Do you wish to continue?"
+echo "这个脚本将安装一个 IPSec/L2TP VPN 服务器"
+echo "是否继续?"
 
 while true; do
   read -p "" yn
   case $yn in
       [Yy]* ) break;;
       [Nn]* ) exit 0;;
-      * ) echo "Please answer with Yes or No [y|n].";;
+      * ) echo "请用 Yes or No 回答 [y|n].";;
   esac
 done
 
@@ -54,24 +54,24 @@ generateKey () {
   IPSEC_PSK="$P1$P2$P3"
 }
 
-echo "The VPN needs a private PSK key."
-echo "Do you wish to set it yourself?"
-echo "(Otherwise a random key is generated)"
+echo "VPN需要建立一个私人 PSK key."
+echo "你希望自己设置?"
+echo "(否则会生成一个随机密钥)"
 while true; do
   read -p "" yn
   case $yn in
       [Yy]* ) echo ""; echo "Enter your preferred key:"; read -p "" IPSEC_PSK; break;;
       [Nn]* ) generateKey; break;;
-      * ) echo "Please answer with Yes or No [y|n].";;
+      * ) echo "请用 Yes or No 回答[y|n].";;
   esac
 done
 
 echo ""
 echo "The key you chose is: '$IPSEC_PSK'."
-echo "Please save it, because you'll need it to connect!"
+echo "请记住它，因为你将会用到它来连接!"
 echo ""
 
-read -p "Please enter your preferred username [vpn]: " VPN_USER
+read -p "请输入你的VPN用户名: " VPN_USER
 
 if [ "$VPN_USER" = "" ]
 then
@@ -83,10 +83,10 @@ echo ""
 while true; do
   stty_orig=`stty -g`
   stty -echo
-  read -p "Please enter your preferred password: " VPN_PASSWORD
+  read -p "请输入密码: " VPN_PASSWORD
   if [ "x$VPN_PASSWORD" = "x" ]
   then
-    echo "Please enter a valid password!"
+    echo "请输入有效密码!"
   else
     stty $stty_orig
     break
@@ -107,72 +107,72 @@ fi
 PUBLICIP=`wget -q -O - http://wtfismyip.com/text`
 if [ "x$PUBLICIP" = "x" ]
 then
-  echo "Your server's external IP address could not be detected!"
-  echo "Please enter the IP yourself:"
+  echo "无法检测到您的服务器的外部IP地址！"
+  echo "请输入你的服务IP:"
   read -p "" PUBLICIP
 else
-  echo "Detected your server's external IP address: $PUBLICIP"
+  echo "检测到您的服务器的外部IP地址: $PUBLICIP"
 fi
 
 PRIVATEIP=$(ip addr | awk '/inet/ && /eth0/{sub(/\/.*$/,"",$2); print $2}')
 IPADDRESS=$PUBLICIP
 
 echo ""
-echo "Are you on Amazon EC2?"
-echo "If you answer no to this and you are on EC2, clients will be unable to connect to your VPN."
-echo "This is needed because EC2 puts your instance behind one-to-one NAT, and using the public IP in the config causes incoming connections to fail with auth failures."
+echo "你是在Amazon EC2上?"
+echo "如果你回答没有这个，你是在EC2上，客户端将无法连接到您的VPN."
+echo "这是必要的，因为EC2使您的实例背后一对一NAT，并且在配置使用公共IP导致传入连接失败."
 while true; do
   read -p "" yn
   case $yn in
     [Yy]* ) IPADDRESS=$PRIVATEIP; break;;
     [Nn]* ) break;;
-    * ) echo "Please answer with Yes or No [y|n].";;
+    * ) echo "请用 Yes or No 回答[y|n].";;
   esac
 done
 
-echo "The IP address that will be used in the config is $IPADDRESS"
+echo "将在配置中使用的IP地址是 $IPADDRESS"
 
 echo ""
 echo "============================================================"
 echo ""
 
-echo "Installing necessary dependencies..."
+echo "安装必要的依赖......"
 
 apt-get install libnss3-dev libnspr4-dev pkg-config libpam0g-dev libcap-ng-dev libcap-ng-utils libselinux1-dev libcurl4-nss-dev libgmp3-dev flex bison gcc make libunbound-dev libnss3-tools -y  > /dev/null
 
 if [ "$?" = "1" ]
 then
-  echo "An unexpected error occured!"
+  echo "发生意外错误!"
   exit 0
 fi
 
-echo "Installing XL2TPD..."
+echo "安装XL2TPD ...."
 apt-get install xl2tpd -y > /dev/null
 
 if [ "$?" = "1" ]
 then
-  echo "An unexpected error occured!"
+  echo "发生意外错误!"
   exit 0
 fi
 
 # Compile and install Libreswan
 mkdir -p /opt/src
 cd /opt/src
-echo "Downloading LibreSwan's source..."
+echo "下载LibreSwan的源..."
 wget -qO- https://download.libreswan.org/libreswan-3.12.tar.gz | tar xvz > /dev/null
 cd libreswan-3.12
-echo "Compiling LibreSwan..."
+echo "编译LibreSwan..."
 make programs > /dev/null
-echo "Installing LibreSwan..."
+echo "安装 LibreSwan..."
 make install > /dev/null
 
 if [ "$?" = "1" ]
 then
-  echo "An unexpected error occured!"
+  echo "发生意外错误!"
   exit 0
 fi
 
-echo "Preparing various configuration files..."
+echo "准备配置文件中..."
 
 cat > /etc/ipsec.conf <<EOF
 version 2.0
@@ -261,14 +261,14 @@ cat > /etc/rc.local <<EOF
 #
 # rc.local
 #
-# This script is executed at the end of each multiuser runlevel.
-# Make sure that the script will "exit 0" on success or any other
+# 这个脚本是在每个多用户运行级别结束时执行.
+# 确保脚本将成功或任何其他 "exit 0" 或任何其他
 # value on error.
 #
 # In order to enable or disable this script just change the execution
 # bits.
 #
-# By default this script does nothing.
+# 默认情况下这个脚本不做任何事.
 iptables --table nat --append POSTROUTING --jump MASQUERADE
 echo 1 > /proc/sys/net/ipv4/ip_forward
 for each in /proc/sys/net/ipv4/conf/*
@@ -280,7 +280,7 @@ done
 /usr/sbin/service xl2tpd restart
 EOF
 
-echo "Applying changes..."
+echo "应用更改..."
 
 iptables --table nat --append POSTROUTING --jump MASQUERADE > /dev/null
 echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -303,7 +303,7 @@ echo "Starting IPSec and XL2TP services..."
 /usr/sbin/service ipsec restart > /dev/null
 /usr/sbin/service xl2tpd restart > /dev/null
 
-echo "Success!"
+echo "成功!"
 echo ""
 
 clear
@@ -315,13 +315,13 @@ echo "Username: $VPN_USER"
 echo "Password: ********"
 echo "============================================================"
 
-echo "Your VPN server password is hidden. Would you like to reveal it?"
+echo "你的VPN服务器的密码是隐藏的。你想显示它吗?"
 while true; do
   read -p "" yn
   case $yn in
       [Yy]* ) clear; break;;
       [Nn]* ) exit 0;;
-      * ) echo "Please answer with Yes or No [y|n].";;
+      * ) echo "请用 Yes or No 回答[y|n].";;
   esac
 done
 
@@ -332,7 +332,7 @@ echo "Username: $VPN_USER"
 echo "Password: $VPN_PASSWORD"
 echo "============================================================"
 
-echo "If you plan to keep the VPN server generated with this script on the internet for a long time (a day or more), consider securing it to possible attacks!"
+echo "如果你打算保持这一脚本生成在互联网上使用很长一段时间（一天或更长时间），那么它可能会受到攻击!"
 
 sleep 1
 exit 0
